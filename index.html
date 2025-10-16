@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Викторина-Батл: Вариациялық Қатарлар</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Настройка шрифта и фона */
+        body {
+            font-family: 'Times New Roman', Times, serif; /* Шрифт Times New Roman */
+            background-color: #1f2937; /* Темный фон для контраста */
+            color: #f9fafb; /* Светлый текст */
+        }
+
+        /* Комиксный стиль для кнопок и карточек */
+        .comic-panel {
+            border: 4px solid #1f2937; /* Темный контур */
+            border-radius: 16px;
+            box-shadow: 6px 6px 0px 0px #1f2937; /* Толстая тень */
+            transition: transform 0.1s;
+        }
+
+        .comic-button {
+            border: 3px solid #1f2937;
+            border-radius: 8px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 700;
+            box-shadow: 4px 4px 0px 0px #1f2937;
+            transition: all 0.1s ease;
+        }
+
+        .comic-button:hover {
+            box-shadow: 2px 2px 0px 0px #1f2937;
+            transform: translate(2px, 2px);
+        }
+
+        /* Стиль для активного игрока/выбора */
+        .p1-color { background-color: #ef4444; color: white; } /* Красный (Red-500) */
+        .p2-color { background-color: #3b82f6; color: white; } /* Синий (Blue-500) */
+        .p1-text { color: #ef4444; }
+        .p2-text { color: #3b82f6; }
+        .p-bg-incorrect { background-color: #fee2e2; border-color: #ef4444; }
+        .p-bg-correct { background-color: #d1fae5; border-color: #10b981; }
+
+        /* Стиль для опций */
+        .option-item {
+            display: flex;
+            align-items: center;
+            border: 2px solid #1f2937;
+            border-radius: 8px;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            background-color: #fef3c7; /* Желтый фон для опций */
+            color: #1f2937;
+            font-weight: 600;
+            transition: background-color 0.1s;
+        }
+
+        /* Таймер бар */
+        #timerBar {
+            height: 100%;
+            transition: width 1s linear;
+        }
+
+        /* Скрытие MathJax, так как формул нет */
+        .MathJax { display: none !important; }
+
+    </style>
+</head>
+<body>
+
+    <div class="min-h-screen flex items-center justify-center p-4">
+        <!-- Main Application Container -->
+        <div id="appContainer" class="w-full h-full max-w-5xl">
+
+            <!-- 1. Start Screen (Бастау экраны) -->
+            <div id="startScreen" class="text-center bg-yellow-400 p-8 comic-panel">
+                <h1 class="text-4xl font-extrabold mb-6 text-gray-800">Викторина-Батл: Вариациялық Қатарлар</h1>
+                <p class="text-gray-700 mb-8 font-semibold">
+                    Жылдамдық пен дәлдік жарысы! Кім бірінші болып дұрыс жауап берсе, сол ұпай алады. Әр сұраққа 10 секунд беріледі.
+                </p>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
+                    <div class="p-4 bg-red-300 rounded-lg comic-panel">
+                        <label for="p1Name" class="block font-bold text-lg mb-2 text-red-800">1-Ойыншы (Басқару: A, S, D):</label>
+                        <input type="text" id="p1Name" placeholder="1-ойыншының атын енгізіңіз" value="1-Ойыншы" class="w-full p-3 rounded border-2 border-red-800 focus:outline-none focus:ring-4 focus:ring-red-600">
+                    </div>
+                    <div class="p-4 bg-blue-300 rounded-lg comic-panel">
+                        <label for="p2Name" class="block font-bold text-lg mb-2 text-blue-800">2-Ойыншы (Басқару: J, K, L):</label>
+                        <input type="text" id="p2Name" placeholder="2-ойыншының атын енгізіңіз" value="2-Ойыншы" class="w-full p-3 rounded border-2 border-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-600">
+                    </div>
+                </div>
+
+                <button onclick="startGame()" class="comic-button bg-green-500 text-white mt-10 text-xl mx-auto block">
+                    БАТЛДЫ БАСТАУ!
+                </button>
+            </div>
+
+            <!-- 2. Game Screen (Ойын экраны) -->
+            <div id="gameScreen" class="hidden w-full bg-white rounded-xl shadow-2xl overflow-hidden">
+                <!-- Question Display Area -->
+                <div class="bg-gray-800 text-white p-4 text-center">
+                    <h2 class="text-2xl font-bold mb-2">Сұрақ: <span id="currentQuestionNumber">1</span> / 10</h2>
+                    <p id="questionText" class="text-xl font-semibold"></p>
+                </div>
+                
+                <!-- Timer Bar -->
+                <div class="h-4 bg-gray-300">
+                    <div id="timerBar" class="bg-yellow-500"></div>
+                </div>
+
+                <!-- Player Panels -->
+                <div class="flex">
+                    <!-- Player 1 Panel (Left) -->
+                    <div id="p1Panel" class="w-1/2 p-6 border-r-4 border-gray-800 bg-red-100 min-h-[400px]">
+                        <div class="flex justify-between items-center mb-4 border-b-2 border-red-500 pb-2">
+                            <h3 class="text-2xl font-extrabold p1-text" id="p1Display">1-Ойыншы</h3>
+                            <span class="text-3xl font-extrabold text-gray-800">Ұпай: <span id="p1Score">0</span></span>
+                        </div>
+                        <div id="p1Options" class="options-container">
+                            <!-- Options for P1 -->
+                        </div>
+                        <div id="p1Status" class="mt-4 text-center text-lg font-bold"></div>
+                    </div>
+
+                    <!-- Player 2 Panel (Right) -->
+                    <div id="p2Panel" class="w-1/2 p-6 bg-blue-100 min-h-[400px]">
+                        <div class="flex justify-between items-center mb-4 border-b-2 border-blue-500 pb-2">
+                            <h3 class="text-2xl font-extrabold p2-text" id="p2Display">2-Ойыншы</h3>
+                            <span class="text-3xl font-extrabold text-gray-800">Ұпай: <span id="p2Score">0</span></span>
+                        </div>
+                        <div id="p2Options" class="options-container">
+                            <!-- Options for P2 -->
+                        </div>
+                        <div id="p2Status" class="mt-4 text-center text-lg font-bold"></div>
+                    </div>
+                </div>
+                
+                <div class="p-4 bg-gray-800 text-center">
+                    <button onclick="nextQuestion()" id="nextBtn" class="comic-button bg-yellow-500 text-gray-800 hidden">
+                        Келесі Сұрақ
+                    </button>
+                </div>
+            </div>
+
+            <!-- 3. Results Screen (Нәтиже экраны) -->
+            <div id="resultsScreen" class="hidden text-center bg-white p-8 comic-panel border-4 border-yellow-500">
+                <h2 class="text-4xl font-extrabold mb-6 text-gray-800">🎉 БАТЛ АЯҚТАЛДЫ! 🎉</h2>
+                <div id="finalResults" class="mb-8 p-4 rounded-lg bg-gray-100 text-gray-800">
+                    <!-- Final scores and winner displayed here -->
+                </div>
+                <button onclick="resetGame()" class="comic-button bg-indigo-600 text-white text-xl">
+                    Қайта Ойнау
+                </button>
+            </div>
+
+            <!-- Alert/Message Box (for key controls) -->
+            <div id="messageBox" class="fixed top-0 left-1/2 -translate-x-1/2 mt-4 p-4 rounded-lg text-center text-white font-medium shadow-xl z-50 transition-all duration-300 opacity-0 hidden" style="min-width: 300px;">
+                <p id="messageText"></p>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Quiz Data - Теперь 3 варианта ответа
+        const quizData = [
+            {
+                q: "Дискретті вариациялық қатар дегеніміз не?",
+                options: [
+                    "Белгінің мәндері үздіксіз аралықтар түрінде берілген қатар",
+                    "Белгінің мәндері жеке, үзілісті түрде берілген қатар", // Correct
+                    "Барлық мәндері бірдей қатар"
+                ],
+                correctIndex: 1,
+                optionLabels: ["A", "B", "C"]
+            },
+            {
+                q: "Интервалды вариациялық қатар қашан қолданылады?",
+                options: [
+                    "Белгінің мәндері үзілісті болғанда",
+                    "Белгінің мәндері үздіксіз және көп болғанда", // Correct
+                    "Тек сапалық белгілер үшін"
+                ],
+                correctIndex: 1,
+                optionLabels: ["A", "B", "C"]
+            },
+            {
+                q: "Дискретті қатар мысалы:",
+                options: [
+                    "Оқушылардың бойы (см)",
+                    "Студенттердің жасы (жылмен)",
+                    "Бағалар (2, 3, 4, 5)" // Correct
+                ],
+                correctIndex: 2,
+                optionLabels: ["A", "B", "C"]
+            },
+            {
+                q: "Интервалды қатарда нені көрсету керек?",
+                options: [
+                    "Тек ең кіші мәнді",
+                    "Белгі мәндері мен олардың орта мәнін",
+                    "Интервалдар мен жиіліктерді" // Correct
+                ],
+                correctIndex: 2,
+                optionLabels: ["A", "B", "C"]
+            },
+            {
+                q: "Вариациялық қатар құру үшін мәліметтер қандай ретпен орналастырылуы керек?",
+                options: [
+                    "Кездейсоқ ретпен",
+                    "Жиіліктері бойынша",
+                    "Өсу немесе кему ретімен (ранжирлеу)" // Correct
+                ],
+                correctIndex: 2,
+                optionLabels: ["A", "B", "C"]
+            },
+            {
+                q: "Вариациялық қатардың басты мақсаты:",
+                options: [
+                    "Математикалық өрнек табу",
+                    "Мәліметтерді жүйелеу және талдау", // Correct
+                    "Тәжірибе жасау"
+                ],
+                correctIndex: 1,
+                optionLabels: ["A", "B", "C"]
+            },
+            {
+                q: "Интервалды вариациялық қатардың мысалы:",
+                options: [
+                    "2, 3, 3, 4, 5, 5",
+                    "150–160 см, 160–170 см, 170–180 см", // Correct
+                    "1, 2, 3, 4"
+                ],
+                correctIndex: 1,
+                optionLabels: ["A", "B", "C"]
+            },
+            {
+                q: "Дискретті және интервалды қатарлардың айырмашылығы неде?",
+                options: [
+                    "Дискретті қатарда мәндер үзілісті, ал интервалдыда — топталған", // Correct
+                    "Екеуі де бірдей",
+                    "Дискретті қатар үздіксіз"
+                ],
+                correctIndex: 0,
+                optionLabels: ["A", "B", "C"]
+            },
+            {
+                q: "Вариациялық қатардың элементтері қандай?",
+                options: [
+                    "Белгі мәндері және жиіліктер", // Correct
+                    "Уақыт пен орын",
+                    "Баға және түс"
+                ],
+                correctIndex: 0,
+                optionLabels: ["A", "B", "C"]
+            },
+            {
+                q: "Интервал саны көбейсе, не өзгереді?",
+                options: [
+                    "Мәлімет дәлдігі төмендейді",
+                    "Мәлімет нақтылығы артады", // Correct
+                    "Орташа мән өзгермейді"
+                ],
+                correctIndex: 1,
+                optionLabels: ["A", "B", "C"]
+            }
+        ];
+
+        let state = {
+            p1Name: '',
+            p2Name: '',
+            p1Score: 0,
+            p2Score: 0,
+            currentQuestionIndex: 0,
+            isQuestionActive: false,
+            p1Answered: false,
+            p2Answered: false,
+            p1LastAnswer: null, // Index of last selection
+            p2LastAnswer: null,
+            timer: 10,
+            timerInterval: null
+        };
+
+        // Key mappings for 3 options (A, S, D and J, K, L)
+        const P1_KEYS = { 'a': 0, 's': 1, 'd': 2 };
+        const P2_KEYS = { 'j': 0, 'k': 1, 'l': 2 };
+
+        /**
+         * Switches screen visibility.
+         * @param {string} screenId - ID of the screen to show ('startScreen', 'gameScreen', 'resultsScreen').
+         */
+        function switchScreen(screenId) {
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('gameScreen').classList.add('hidden');
+            document.getElementById('resultsScreen').classList.add('hidden');
+            document.getElementById(screenId).classList.remove('hidden');
+        }
+
+        /**
+         * Starts the game from the input screen.
+         */
+        function startGame() {
+            const p1Input = document.getElementById('p1Name').value.trim();
+            const p2Input = document.getElementById('p2Name').value.trim();
+
+            if (!p1Input || !p2Input) {
+                showMessage("Ақаулық: Өтініш, екі ойыншының да атын енгізіңіз.", 'error');
+                return;
+            }
+
+            state.p1Name = p1Input;
+            state.p2Name = p2Input;
+            state.currentQuestionIndex = 0;
+            state.p1Score = 0;
+            state.p2Score = 0;
+
+            document.getElementById('p1Display').textContent = state.p1Name;
+            document.getElementById('p2Display').textContent = state.p2Name;
+            document.getElementById('p1Score').textContent = state.p1Score;
+            document.getElementById('p2Score').textContent = state.p2Score;
+
+            switchScreen('gameScreen');
+            renderQuestion();
+        }
+
+        /**
+         * Renders the current question and starts the timer.
+         */
+        function renderQuestion() {
+            if (state.currentQuestionIndex >= quizData.length) {
+                showResults();
+                return;
+            }
+
+            const q = quizData[state.currentQuestionIndex];
+            state.isQuestionActive = true;
+            state.p1Answered = false;
+            state.p2Answered = false;
+            state.p1LastAnswer = null;
+            state.p2LastAnswer = null;
+            state.timer = 10;
+            
+            document.getElementById('questionText').textContent = q.q;
+            document.getElementById('currentQuestionNumber').textContent = state.currentQuestionIndex + 1;
+            document.getElementById('nextBtn').classList.add('hidden');
+            document.getElementById('p1Status').textContent = '';
+            document.getElementById('p2Status').textContent = '';
+
+            // Render options for Player 1 (only 3 options)
+            document.getElementById('p1Options').innerHTML = q.options.map((option, index) => `
+                <div id="p1_opt_${index}" class="option-item hover:bg-red-200" onclick="handleAnswer('p1', ${index})">
+                    <span class="font-bold mr-3">${q.optionLabels[index]} (${Object.keys(P1_KEYS)[index].toUpperCase()})</span>
+                    <span class="option-text">${option}</span>
+                </div>
+            `).join('');
+
+            // Render options for Player 2 (only 3 options)
+            document.getElementById('p2Options').innerHTML = q.options.map((option, index) => `
+                <div id="p2_opt_${index}" class="option-item hover:bg-blue-200" onclick="handleAnswer('p2', ${index})">
+                    <span class="font-bold mr-3">${q.optionLabels[index]} (${Object.keys(P2_KEYS)[index].toUpperCase()})</span>
+                    <span class="option-text">${option}</span>
+                </div>
+            `).join('');
+
+            startTimer();
+        }
+
+        /**
+         * Starts the 10-second countdown timer.
+         */
+        function startTimer() {
+            clearInterval(state.timerInterval);
+            const timerBar = document.getElementById('timerBar');
+            
+            state.timerInterval = setInterval(() => {
+                state.timer -= 0.1;
+                const percentage = (state.timer / 10) * 100;
+                timerBar.style.width = `${percentage}%`;
+
+                if (state.timer <= 3) {
+                    timerBar.classList.remove('bg-yellow-500');
+                    timerBar.classList.add('bg-red-600');
+                } else {
+                    timerBar.classList.remove('bg-red-600');
+                    timerBar.classList.add('bg-yellow-500');
+                }
+
+                if (state.timer <= 0) {
+                    clearInterval(state.timerInterval);
+                    handleTimeUp();
+                }
+
+                // If both players have answered, stop timer early
+                if (state.p1Answered && state.p2Answered) {
+                    clearInterval(state.timerInterval);
+                    handleEndOfTurn();
+                }
+
+            }, 100);
+        }
+
+        /**
+         * Handles the end of the 10-second timer.
+         */
+        function handleTimeUp() {
+            state.isQuestionActive = false;
+            document.getElementById('nextBtn').classList.remove('hidden');
+            
+            // Highlight correct answer for both sides
+            highlightCorrectAnswer();
+            
+            if (!state.p1Answered) document.getElementById('p1Status').textContent = 'Уақыт аяқталды!';
+            if (!state.p2Answered) document.getElementById('p2Status').textContent = 'Уақыт аяқталды!';
+        }
+
+        /**
+         * Handles the end of turn when both players answer.
+         */
+        function handleEndOfTurn() {
+            state.isQuestionActive = false;
+            document.getElementById('nextBtn').classList.remove('hidden');
+            highlightCorrectAnswer();
+        }
+        
+        /**
+         * Handles a player selecting an answer.
+         * @param {string} player - 'p1' or 'p2'.
+         * @param {number} optionIndex - Index of the selected option.
+         */
+        function handleAnswer(player, optionIndex) {
+            if (!state.isQuestionActive) return;
+
+            const q = quizData[state.currentQuestionIndex];
+            const isCorrect = optionIndex === q.correctIndex;
+            const statusElement = document.getElementById(`${player}Status`);
+            const optionElement = document.getElementById(`${player}_opt_${optionIndex}`);
+
+            if (player === 'p1' && state.p1Answered) return;
+            if (player === 'p2' && state.p2Answered) return;
+            
+            // Mark player as answered
+            if (player === 'p1') {
+                state.p1Answered = true;
+                state.p1LastAnswer = optionIndex;
+            } else {
+                state.p2Answered = true;
+                state.p2LastAnswer = optionIndex;
+            }
+
+            // Apply styling immediately
+            optionElement.classList.remove('hover:bg-red-200', 'hover:bg-blue-200');
+            optionElement.classList.add(isCorrect ? 'p-bg-correct' : 'p-bg-incorrect');
+            
+            if (isCorrect) {
+                statusElement.textContent = `Дұрыс!`;
+                // Check if this player was the first correct one (and the other one didn't answer yet)
+                const otherPlayerAnsweredCorrectly = (player === 'p1' ? state.p2Answered : state.p1Answered) && (player === 'p1' ? state.p2LastAnswer : state.p1LastAnswer) === q.correctIndex;
+                
+                if (!otherPlayerAnsweredCorrectly) {
+                    if (player === 'p1') {
+                        state.p1Score++;
+                        document.getElementById('p1Score').textContent = state.p1Score;
+                        showMessage(`${state.p1Name} +1 ұпай (Бірінші)`, 'success');
+                    } else {
+                        state.p2Score++;
+                        document.getElementById('p2Score').textContent = state.p2Score;
+                        showMessage(`${state.p2Name} +1 ұпай (Бірінші)`, 'success');
+                    }
+                    
+                    // Stop game, the point is awarded to the first correct player
+                    handleEndOfTurn();
+                } else if (state.p1Answered && state.p2Answered) {
+                     // Both answered, first one to answer correctly gets the point logic is complex, 
+                     // but since we only care about the FIRST correct answer, the point is already given.
+                     // The logic above ensures the point is only given to the first correct answer.
+                     handleEndOfTurn();
+                }
+
+            } else {
+                statusElement.textContent = `Қате!`;
+                if (state.p1Answered && state.p2Answered) {
+                    handleEndOfTurn();
+                }
+            }
+        }
+        
+        /**
+         * Highlight the correct answer for visual review after the turn ends.
+         */
+        function highlightCorrectAnswer() {
+            const q = quizData[state.currentQuestionIndex];
+            const correctIndex = q.correctIndex;
+
+            // Highlight on P1 side
+            const p1CorrectOpt = document.getElementById(`p1_opt_${correctIndex}`);
+            p1CorrectOpt.classList.remove('hover:bg-red-200');
+            if (state.p1LastAnswer !== correctIndex) {
+                 p1CorrectOpt.classList.add('p-bg-correct');
+                 p1CorrectOpt.style.border = '3px dashed #10b981';
+            }
+
+            // Highlight on P2 side
+            const p2CorrectOpt = document.getElementById(`p2_opt_${correctIndex}`);
+            p2CorrectOpt.classList.remove('hover:bg-blue-200');
+            if (state.p2LastAnswer !== correctIndex) {
+                 p2CorrectOpt.classList.add('p-bg-correct');
+                 p2CorrectOpt.style.border = '3px dashed #10b981';
+            }
+        }
+
+
+        /**
+         * Moves to the next question.
+         */
+        function nextQuestion() {
+            if (state.currentQuestionIndex < quizData.length - 1) {
+                state.currentQuestionIndex++;
+                renderQuestion();
+            } else {
+                showResults();
+            }
+        }
+
+        /**
+         * Displays final results and winner.
+         */
+        function showResults() {
+            clearInterval(state.timerInterval);
+            switchScreen('resultsScreen');
+
+            const resultsElement = document.getElementById('finalResults');
+            let resultText = `
+                <p class="text-3xl font-bold mb-4">Қорытынды:</p>
+                <p class="text-2xl p1-text font-bold">${state.p1Name}: ${state.p1Score} ұпай</p>
+                <p class="text-2xl p2-text font-bold mb-4">${state.p2Name}: ${state.p2Score} ұпай</p>
+            `;
+
+            if (state.p1Score > state.p2Score) {
+                resultText += `<p class="text-4xl text-green-600 font-extrabold mt-4">${state.p1Name} ЖЕҢІМПАЗ! 🏆</p>`;
+            } else if (state.p2Score > state.p1Score) {
+                resultText += `<p class="text-4xl text-green-600 font-extrabold mt-4">${state.p2Name} ЖЕҢІМПАЗ! 🏆</p>`;
+            } else {
+                resultText += `<p class="text-4xl text-yellow-600 font-extrabold mt-4">ТЕҢ ОЙЫН! (DRAW) 🤝</p>`;
+            }
+
+            resultsElement.innerHTML = resultText;
+        }
+
+        /**
+         * Resets the game to the start screen.
+         */
+        function resetGame() {
+            clearInterval(state.timerInterval);
+            switchScreen('startScreen');
+        }
+
+        /**
+         * Handles keyboard input for quick answering.
+         */
+        document.addEventListener('keydown', (event) => {
+            if (!state.isQuestionActive) return;
+
+            const key = event.key.toLowerCase();
+            let player = null;
+            let optionIndex = -1;
+
+            if (key in P1_KEYS) {
+                player = 'p1';
+                optionIndex = P1_KEYS[key];
+            } else if (key in P2_KEYS) {
+                player = 'p2';
+                optionIndex = P2_KEYS[key];
+            }
+
+            if (player && optionIndex !== -1) {
+                // Trigger the click/answer handler
+                handleAnswer(player, optionIndex);
+            }
+        });
+
+
+        /**
+         * Displays a temporary message box.
+         * @param {string} message - The message to display.
+         * @param {string} type - 'success' or 'error'.
+         */
+        function showMessage(message, type) {
+            const msgBox = document.getElementById('messageBox');
+            const msgText = document.getElementById('messageText');
+            
+            msgText.textContent = message;
+
+            // Apply colors based on type
+            msgBox.classList.remove('bg-green-500', 'bg-red-500', 'opacity-0', 'hidden');
+            if (type === 'success') {
+                msgBox.classList.add('bg-green-500');
+            } else {
+                msgBox.classList.add('bg-red-500');
+            }
+
+            // Show the box
+            setTimeout(() => {
+                msgBox.classList.remove('opacity-0');
+            }, 10);
+            msgBox.classList.remove('hidden');
+
+            // Hide the box after 3 seconds
+            setTimeout(() => {
+                msgBox.classList.add('opacity-0');
+                // Hide completely after transition
+                setTimeout(() => {
+                    msgBox.classList.add('hidden');
+                }, 300);
+            }, 3000);
+        }
+        
+        // Initial setup
+        window.onload = () => {
+             // MathJax скриптін тексеру және жою
+             const mathJaxScript = document.querySelector('script[src*="mathjax"]');
+             if (mathJaxScript) {
+                 mathJaxScript.remove();
+             }
+             switchScreen('startScreen');
+        };
+
+    </script>
+
+</body>
+</html>
